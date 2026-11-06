@@ -14,15 +14,11 @@ from .registry import TOOLS
 INSTRUCTIONS = """Unofficial, read-only access to the Iran Mercantile Exchange (بورس کالای ایران, ime.co.ir): the public trade, supply
 and statistics data its website shows to anyone without an account. Nothing here can trade, log in or place orders.
 
-Tools: ime_trades (physical, subsidiary, Kish export or premium trades for a date range: price (weighted closing), low, high, volume,
-supply, demand, producer, broker), ime_supply (supply offers for coming sessions, also premium and export: volume, base price,
-delivery), ime_price_history (daily low/high/average/volume per symbol over up to 45 days), ime_trade_stats (rank producers,
-commodities, brokers or halls by traded value), ime_market_summary (value and volume by market and hall plus the USD settlement
-rate), ime_daily_totals (day-by-day totals of one market), ime_categories (commodity group ids), ime_producers (producer ids by
-name), ime_news (exchange announcements), ime_weekly_reports (links to the weekly report PDFs). Derivatives and securities:
-ime_options (options board of one day or history of one contract), ime_certificates (continuous deposit certificates: gold bar, gold
-coin, silver, copper, steel...), ime_securities (daily salaf, commodity deposit certificates and commodity funds), ime_board (live
-or last-session bid/ask board of funds, certificates and salaf).
+Tools: ime_trades (trades), ime_supply (offers for coming sessions), ime_price_history (daily series per symbol),
+ime_trade_stats (rank producers/commodities/brokers/halls), ime_market_summary (totals by market and hall, USD rate),
+ime_daily_totals, ime_categories (group ids), ime_producers (producer ids), ime_news, ime_weekly_reports.
+Derivatives and securities: ime_options, ime_certificates (gold bar, gold coin, silver...), ime_securities (salaf,
+certificates, funds by day), ime_board (live bid/ask).
 
 Typical flows: "hot sheet price this month" -> ime_categories(1) -> ime_categories(1, <cat id>) for the subgroup id
 -> ime_price_history(sub_cat=...) or ime_price_history(search="ورق گرم"). "What is offered tomorrow" -> ime_supply.

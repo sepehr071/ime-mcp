@@ -21,7 +21,7 @@ DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "012345678901
 
 Date = Annotated[
     str | None,
-    Field(description="Persian date 1405/08/09 or Gregorian 2026-10-31 (Persian digits are fine).", max_length=12),
+    Field(description="Persian 1405/08/09 or Gregorian 2026-10-31.", max_length=12),
 ]
 CatId = Annotated[int, Field(description="Category id from ime_categories (0 = all).", ge=0)]
 
@@ -216,9 +216,7 @@ async def _trades(
 
 Market = Annotated[
     Literal["physical", "subsidiary", "export", "premium"],
-    Field(
-        description="physical (main physical market halls), subsidiary (بازار فرعی, secondary market), export (Kish export hall) or premium (پریمیوم contracts; no producer filter)."
-    ),
+    Field(description="physical, subsidiary (بازار فرعی), export (Kish hall) or premium (no producer filter)."),
 ]
 
 
@@ -231,10 +229,8 @@ async def ime_categories(
 ) -> dict[str, Any]:
     """List the exchange's commodity groups: main groups, then groups, then subgroups, with their ids.
 
-    Call it with no arguments for the main groups (industrial, agriculture, petrochemical, mineral, oil products,
-    real estate, subsidiary). Pass main_cat for the groups under it (steel, aluminium, copper, gold...), then main_cat
-    plus cat for the subgroups (rebar, hot sheet...). Use the ids as main_cat/cat/sub_cat in ime_trades, ime_supply
-    and ime_price_history.
+    No arguments: main groups. main_cat: its groups. main_cat plus cat: subgroups. Use the ids as
+    main_cat/cat/sub_cat in ime_trades, ime_supply and ime_price_history.
     """
     if not main_cat:
         rows = [{"id": r["code"], "name": r["Name"]} for r in await _asmx("GetMainGroups")]
@@ -277,7 +273,7 @@ async def ime_trades(
     producer: CatId = 0,
     search: Annotated[
         str | None,
-        Field(description="Keep trades whose commodity, symbol or producer contains this text.", max_length=80),
+        Field(description="Commodity, symbol or producer contains this text.", max_length=80),
     ] = None,
     sort: Annotated[
         Literal["value", "volume", "date"],
@@ -287,12 +283,10 @@ async def ime_trades(
 ) -> dict[str, Any]:
     """List commodity trades (price, volume, supply, demand, buyer broker) for a date range, with totals.
 
-    Use it for "what traded today", "steel prices this week", "who bought what". Dates default to today (Tehran);
-    at most 45 days. Filter with main_cat/cat/sub_cat (ids from ime_categories), producer (ime_producers) or search
-    text. `price` is the volume-weighted closing price (قیمت پایانی میانگین موزون) and low/high the range; prices are per the unit shown (Rial per kg for
-    tonne goods). `volume` is in `unit`. `value_k_rial` is price x volume in thousand Rial. Subsidiary rows carry only
-    base_price, supply, demand and volume (the site publishes no price or value for them). For a price series of one
-    product use ime_price_history; for market-wide totals ime_market_summary.
+    Dates default to today (Tehran); at most 45 days. Filter with main_cat/cat/sub_cat (ime_categories), producer
+    (ime_producers) or search. `price` is the volume-weighted closing price; Rial per kg for tonne goods; `volume` in
+    `unit`; `value_k_rial` in thousand Rial. Subsidiary rows have only base_price, supply, demand, volume. For one
+    product's series use ime_price_history; for market totals ime_market_summary.
     """
     f, t = _span(date_from, date_to, 0)
     _check_len(f, t)
@@ -346,26 +340,19 @@ async def ime_supply(
     producer: CatId = 0,
     search: Annotated[
         str | None,
-        Field(
-            description="Keep offers whose commodity, symbol, producer or supplier contains this text.", max_length=80
-        ),
+        Field(description="Commodity, symbol, producer or supplier contains this text.", max_length=80),
     ] = None,
     limit: Annotated[int, Field(description="Max offers to return (1-50).", ge=1, le=50)] = 20,
     offset: Annotated[int, Field(description="Skip this many offers (paging).", ge=0)] = 0,
     market: Annotated[
         Literal["physical", "premium", "export"],
-        Field(
-            description="physical (default), premium (اطلاعیه عرضه پریمیوم) or export (Kish export hall, priced in $)."
-        ),
+        Field(description="physical, premium or export (Kish hall, priced in $)."),
     ] = "physical",
 ) -> dict[str, Any]:
     """List supply offers (اطلاعیه عرضه): what is up for sale on which session, volume and base price.
 
-    Use it for "what will be offered tomorrow / next week". Dates are offer dates; default today to 7 days ahead;
-    at most 45 days. Each offer has the commodity, symbol, hall, producer, supplier, volume (`unit`), base price,
-    contract type, delivery date and place, settlement type and broker. Filters as in ime_trades; page with offset.
-    market=premium lists premium contracts (`premium_price`), market=export the export hall. After the session,
-    ime_trades shows what actually sold.
+    Dates are offer dates; default today to 7 days ahead; at most 45 days. Filters as in ime_trades; page with
+    offset. market=premium adds `premium_price`. After the session ime_trades shows what sold.
     """
     f, t = _span(date_from, date_to, 7, forward=True)
     _check_len(f, t)
@@ -407,7 +394,7 @@ async def ime_price_history(
     date_from: Date = None,
     date_to: Date = None,
     search: Annotated[
-        str | None, Field(description="Commodity, symbol or producer text, e.g. ورق گرم or میلگرد.", max_length=80)
+        str | None, Field(description="Commodity, symbol or producer text, e.g. ورق گرم.", max_length=80)
     ] = None,
     main_cat: CatId = 0,
     cat: CatId = 0,
@@ -417,9 +404,8 @@ async def ime_price_history(
 ) -> dict[str, Any]:
     """Daily price series (low, high, volume-weighted average, volume) per symbol over a date range.
 
-    Use it for "how did hot sheet / rebar / PE prices move this month". Dates default to the last 14 days up to
-    today; at most 45 days. Narrow it with sub_cat or search (a wide filter returns only the 8 biggest symbols).
-    Built from the trade list, so only days with trades appear. Prices as in ime_trades.
+    Dates default to the last 14 days; at most 45 days. Narrow with sub_cat or search (a wide filter returns only
+    the 8 biggest symbols). Only days with trades appear. Prices as in ime_trades.
     """
     f, t = _span(date_from, date_to, 14)
     _check_len(f, t)
@@ -460,10 +446,8 @@ async def ime_price_history(
 async def ime_market_summary(date_from: Date = None, date_to: Date = None) -> dict[str, Any]:
     """Exchange-wide trade value and volume for a date range: by market, by physical-market hall, plus the USD rate.
 
-    Use it for "how big was trading this week" or to see which hall (industrial, petrochemical, subsidiary...) led.
-    Dates default to today (Tehran); the range is free-form but keep it short. Values are million Rial; volumes are
-    tonnes for the physical market. `offer_volume` is what was offered. The USD rate is the exchange's own
-    settlement rate. For a day-by-day series use ime_daily_totals.
+    Dates default to today (Tehran). Values are million Rial; volumes are tonnes for physical. `offer_volume` is
+    what was offered. The USD rate is the exchange's settlement rate. For a day-by-day series use ime_daily_totals.
     """
     f, t = _span(date_from, date_to, 0)
     kw = {"GregorianFromDate": f, "GregorianToDate": t}
@@ -503,13 +487,13 @@ async def ime_daily_totals(
     date_to: Date = None,
     market: Annotated[
         Literal["physical", "options", "financial"],
-        Field(description="physical, options (اختیار معامله) or financial (مالی)."),
+        Field(description="physical, options or financial."),
     ] = "physical",
 ) -> dict[str, Any]:
     """Day-by-day trade value and volume of one market over a date range (the site's market chart).
 
-    Use it for trends: "how has physical trading volume moved over the last month". Dates default to the last 14
-    days; at most 45 days. Value is million Rial. Volume is tonnes for physical, contracts for options, units for financial.
+    Dates default to the last 14 days; at most 45 days. Value is million Rial. Volume is tonnes (physical),
+    contracts (options) or units (financial).
     """
     f, t = _span(date_from, date_to, 14)
     _check_len(f, t)
@@ -533,7 +517,7 @@ async def ime_news(
 ) -> dict[str, Any]:
     """Latest news and notices from the exchange's news archive: title, lead, date and link.
 
-    Use it for announcements, weekly trading reports and new listings. Text is Persian.
+    Text is Persian.
     """
     page = await fetch(f"{SITE}/newsarchive.html", page="/", text=True)
     items = []
@@ -557,7 +541,7 @@ async def ime_news(
 async def ime_trade_stats(
     group_by: Annotated[
         Literal["producer", "commodity", "broker", "hall", "contract"],
-        Field(description="Rank trades by producer, commodity, buyer broker, hall or contract type."),
+        Field(description="Grouping key (broker = buyer broker)."),
     ],
     date_from: Date = None,
     date_to: Date = None,
@@ -568,16 +552,14 @@ async def ime_trade_stats(
     producer: CatId = 0,
     search: Annotated[
         str | None,
-        Field(description="Keep trades whose commodity, symbol or producer contains this text.", max_length=80),
+        Field(description="Commodity, symbol or producer contains this text.", max_length=80),
     ] = None,
     limit: Annotated[int, Field(description="Max groups to return (1-50).", ge=1, le=50)] = 15,
 ) -> dict[str, Any]:
     """Rank producers, commodities, brokers or halls by traded value over a date range, with each one's market share.
 
-    Use it for "which producers sold the most steel this month" or "which brokers were most active". Dates default
-    to today (Tehran); at most 45 days; filters as in ime_trades. Value is thousand Rial. `volume` is given only when
-    all trades of the group share one unit. For single trades use ime_trades; for one product's prices over time
-    ime_price_history.
+    Dates default to today (Tehran); at most 45 days; filters as in ime_trades. Value is thousand Rial. `volume`
+    only when all trades of the group share one unit. For single trades use ime_trades.
     """
     f, t = _span(date_from, date_to, 0)
     _check_len(f, t)
@@ -616,16 +598,12 @@ async def ime_trade_stats(
 
 @tool("Weekly reports")
 async def ime_weekly_reports(
-    year: Annotated[
-        int | None, Field(description="Persian year, e.g. 1405 (default: all years on the page).", ge=1380, le=1500)
-    ] = None,
-    limit: Annotated[int, Field(description="Max reports (1-60), newest first.", ge=1, le=60)] = 10,
+    year: Annotated[int | None, Field(description="Persian year, e.g. 1405 (default all).", ge=1380, le=1500)] = None,
+    limit: Annotated[int, Field(description="Max reports (1-60).", ge=1, le=60)] = 10,
 ) -> dict[str, Any]:
     """List the exchange's weekly market reports (گزارش هفتگی), newest first, with the PDF link of each.
 
-    Use it to find the official weekly summary of a week (the report is a PDF, Persian; this tool only lists
-    links, it does not read them). For the numbers of a week use ime_market_summary or ime_trades; for
-    announcements ime_news.
+    Only lists links to the Persian PDFs, does not read them. For a week's numbers use ime_market_summary.
     """
     page = await fetch(f"{SITE}/weeklyReports.html", page="/", text=True)
     reports = []

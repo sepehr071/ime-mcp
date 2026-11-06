@@ -13,9 +13,7 @@ from .ime import TEHRAN, Date, _check_len, _shift, _span, g2j, j2g
 from .registry import tool
 
 MAX_OPTION_DAYS = 10  # about 270 option contracts per trading day
-SEARCH = Annotated[
-    str | None, Field(description="Keep rows whose symbol, code or name contains this text.", max_length=80)
-]
+SEARCH = Annotated[str | None, Field(description="Symbol, code or name contains this text.", max_length=80)]
 
 
 def _latest(rows: list[dict[str, Any]], key: str) -> list[dict[str, Any]]:
@@ -75,31 +73,28 @@ async def ime_options(
     search: Annotated[
         str | None,
         Field(
-            description="Keep contracts whose code or description contains this text, e.g. GCES (gold coin) or صندوق طلا.",
+            description="Code or description contains this text, e.g. GCES or صندوق طلا.",
             max_length=80,
         ),
     ] = None,
     contract: Annotated[
         str | None,
         Field(
-            description="One contract code (from an earlier answer): returns its day-by-day history instead.",
+            description="One contract code: returns its day-by-day history.",
             max_length=24,
         ),
     ] = None,
     traded_only: Annotated[bool, Field(description="Only contracts that traded (volume above 0).")] = True,
     sort: Annotated[
         Literal["volume", "value", "open_interest", "settlement_change"],
-        Field(description="Order of the list, largest first (settlement_change by size of the move)."),
+        Field(description="Largest first (settlement_change by size of move)."),
     ] = "volume",
     limit: Annotated[int, Field(description="Max contracts or days to return (1-100).", ge=1, le=100)] = 30,
 ) -> dict[str, Any]:
     """Options on gold, gold coin, gold funds and saffron futures (اختیار معامله): one day's board or one contract's history.
 
-    Without dates it shows the latest trading day: for each contract the call/put type, underlying, strike (Rial),
-    expiry, first/high/low/last price, settlement price and its change, volume, value (Rial) and open interest.
-    With date_from/date_to (at most 10 days) the rows of every day in the range. Pass contract (a code from the
-    list) to get that one contract's days over up to 45 days. Prices are Rial. For market-wide option totals per day
-    use ime_daily_totals(market="options").
+    No dates: latest trading day. With dates (at most 10 days): every day in the range. `contract` (a code from
+    the list): that contract's days, up to 45. Prices and strike are Rial. Daily market totals: ime_daily_totals(market="options").
     """
     f, t = _span(date_from, date_to, 7)
     if contract:
@@ -143,26 +138,21 @@ async def ime_options(
 async def ime_securities(
     kind: Annotated[
         Literal["all", "salaf", "certificate", "fund"],
-        Field(
-            description="salaf (standard forward, سلف استاندارد), certificate (گواهی سپرده کالایی such as saffron), fund (commodity ETFs, mostly gold) or all."
-        ),
+        Field(description="salaf (سلف), certificate (saffron etc.), fund (commodity ETFs, mostly gold) or all."),
     ] = "all",
     date_from: Date = None,
     date_to: Date = None,
     search: SEARCH = None,
     sort: Annotated[
         Literal["value", "volume", "change", "date"],
-        Field(description="value or volume (largest first), change (biggest move first) or date (newest first)."),
+        Field(description="value/volume largest first, change biggest move first, date newest first."),
     ] = "value",
     limit: Annotated[int, Field(description="Max rows to return (1-100).", ge=1, le=100)] = 30,
 ) -> dict[str, Any]:
     """Daily trades of the exchange's financial-market symbols: salaf, commodity deposit certificates and commodity funds.
 
-    Use it for "which gold fund traded most yesterday" or "saffron certificate prices this week". Without dates it
-    shows the latest trading day; with dates every day in the range (at most 45 days). Each row has symbol, name, close
-    and last price, change vs the previous close, number of trades, volume, value (Rial), low and high. Prices are
-    Rial per unit. For gold bar / gold coin / silver continuous certificates use ime_certificates; for live bid and ask
-    use ime_board.
+    No dates: latest trading day; with dates every day in the range (at most 45). Prices are Rial per unit, value
+    in Rial. Gold bar / gold coin / silver certificates: ime_certificates; live bid and ask: ime_board.
     """
     f, t = _span(date_from, date_to, 7)
     _check_len(f, t)
@@ -228,7 +218,7 @@ async def ime_certificates(
     commodity: Annotated[
         str | None,
         Field(
-            description="Certificate id, code or name part: GoldBar, GoldCoin, SilverBar, CopperCthd, Bitumen, ZincIngot, SteelRebar... or طلا, سکه, نقره. Empty = all.",
+            description="Certificate id, code or name part: GoldBar, GoldCoin, SilverBar, SteelRebar... or طلا, سکه. Empty = all.",
             max_length=40,
         ),
     ] = None,
@@ -237,11 +227,9 @@ async def ime_certificates(
 ) -> dict[str, Any]:
     """Continuous commodity deposit certificates (گواهی سپرده پیوسته): gold bar, gold coin, silver, copper, steel and more.
 
-    These are the exchange's gold bar / gold coin / silver certificates (gold.ime.co.ir). Without `commodity` it lists
-    every certificate with its latest day: first, high, low, last price, settlement price and change, volume, value
-    (Rial), open interest and active customers. With `commodity` it gives that certificate's day-by-day history (dates
-    default to the last 30 days, at most 90). Prices are Rial per certificate unit (about one gram for gold bar, one
-    coin for GoldCoin). For fund and saffron-certificate symbols use ime_securities.
+    No `commodity`: every certificate with its latest day. With `commodity`: its day-by-day history (default last
+    30 days, at most 90). Prices are Rial per certificate unit (about one gram for gold bar, one coin for GoldCoin).
+    Fund and saffron symbols: ime_securities.
     """
     contracts = await fetch(CDC_CONTRACTS)
     pick = None
@@ -301,22 +289,19 @@ async def ime_certificates(
 async def ime_board(
     kind: Annotated[
         Literal["fund", "certificate", "salaf"],
-        Field(
-            description="fund (commodity ETFs, mostly gold), certificate (saffron etc.) or salaf (standard forward)."
-        ),
+        Field(description="fund (mostly gold), certificate (saffron etc.) or salaf."),
     ] = "fund",
     search: SEARCH = None,
     sort: Annotated[
         Literal["value", "volume", "change"],
-        Field(description="value or volume (largest first) or change (biggest move first)."),
+        Field(description="value/volume largest first, change biggest move first."),
     ] = "value",
     limit: Annotated[int, Field(description="Max symbols to return (1-60).", ge=1, le=60)] = 20,
 ) -> dict[str, Any]:
     """Market-view board (cdn.ime.co.ir) with the best bid and ask: use it to see where a fund or certificate trades now.
 
-    During the session it is live; after the close it keeps the last session (see `time` and `date`). Each symbol has
-    last and closing price, change vs yesterday, low, high, volume, value (Rial), number of trades, best bid and best
-    ask with sizes. For daily history over a range use ime_securities.
+    Live during the session; after the close the last session (see `time`, `date`). Value in Rial. Daily history:
+    ime_securities.
     """
     param = {"fund": "sandoq", "certificate": "gavahi", "salaf": "salaf"}[kind]
     rows = await fetch(BOARD, params={"param": param})
