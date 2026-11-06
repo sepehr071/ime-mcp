@@ -1,6 +1,6 @@
 [project]
 name = "ime-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Unofficial read-only MCP server for the Iran Mercantile Exchange (ime.co.ir): physical market trades, supply offers, prices, market totals."
 readme = "README.md"
 license = "MIT"
