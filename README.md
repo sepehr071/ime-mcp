@@ -134,23 +134,6 @@ default is today (Tehran time). Ranges are limited to 45 days.
 
 All 14 tools are annotated `readOnlyHint: true`.
 
-## How it works
-
-```text
-  AI agent  (Claude, Cursor, Copilot, ...)
-      │
-      │  MCP over stdio
-      ▼
-  ime-mcp  (runs on your machine)
-      │
-      │  HTTPS
-      └──────▶  www.ime.co.ir   imedata.asmx, auction.ashx, export.ashx, news archive
-```
-
-`ime-mcp` runs locally and calls the same public endpoints the ime.co.ir pages use, with no hosted server in between
-and no API key. Requests go out through a Chrome-impersonating client. It makes at most 3 requests at a time with a
-little jitter, keeps answers for 2 minutes, retries a failed request up to twice, and only talks to www.ime.co.ir, dataapi.ime.co.ir (gold and other deposit certificates) and cdn.ime.co.ir (bid/ask board).
-
 ## Good to know
 
 - **Iranian network.** ime.co.ir answers from Iran. From a Turkish exit it timed out in testing; use a direct Iranian line or set `IME_MCP_PROXY` to a proxy that can reach it.
